@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, Text, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 import type { PracticeStatus } from '~/shared/store/usePracticeStore';
 
@@ -17,11 +17,12 @@ const ICON_COLOR = { done: '#3DBE5C', active: '#F58A00', locked: '#A99E8B' } as 
 export function PracticeRow({ title, note, icon, status, onPress }: PracticeRowProps) {
   const locked = status === 'locked';
   return (
-    <Pressable
+    <TouchableOpacity
       disabled={locked}
       onPress={onPress}
+      activeOpacity={0.8}
       className={`flex-row items-center gap-4 rounded-[22px] p-6 ${
-        locked ? 'bg-locked-bg opacity-80' : 'bg-white shadow-sm active:opacity-80'
+        locked ? 'bg-locked-bg opacity-80' : 'bg-white shadow-sm'
       }`}>
       <View
         className="h-16 w-16 items-center justify-center rounded-2xl"
@@ -50,6 +51,6 @@ export function PracticeRow({ title, note, icon, status, onPress }: PracticeRowP
           <Ionicons name="lock-closed" size={20} color="#7C7263" />
         </View>
       )}
-    </Pressable>
+    </TouchableOpacity>
   );
 }
