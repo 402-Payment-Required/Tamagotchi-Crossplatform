@@ -1,13 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 
-import type { MissionStatus } from '../../api/missionApi';
-
 interface PracticeRowProps {
   title: string;
   note: string;
   icon: keyof typeof Ionicons.glyphMap;
-  status: MissionStatus;
+  status: 'done' | 'todo';
 }
 
 export function PracticeRow({ title, note, icon, status }: PracticeRowProps) {

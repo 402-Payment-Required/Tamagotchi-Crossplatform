@@ -1,21 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMissionProgress } from '~/shared/store/useMissionProgress';
 
-import { getMissionList } from '../api/missionApi';
-import { STATUS_NOTE, TYPE_ICON } from './practiceItems';
+import { MISSIONS } from './missions';
 
-export const usePracticeList = (userId: string | null) =>
-  useQuery({
-    queryKey: ['missions', userId],
-    queryFn: async () => {
-      const missions = await getMissionList(userId as string);
-      return missions.map((mission) => ({
-        id: mission.mission_id,
-        title: mission.title,
-        type: mission.type,
-        status: mission.status,
-        icon: TYPE_ICON[mission.type],
-        note: STATUS_NOTE[mission.status],
-      }));
-    },
-    enabled: !!userId,
+export const usePracticeList = () => {
+  const done = useMissionProgress((state) => state.done);
+  return MISSIONS.map((mission) => {
+    const isDone = done.includes(mission.id);
+    return {
+      id: mission.id,
+      title: mission.title,
+      icon: mission.icon,
+      status: isDone ? ('done' as const) : ('todo' as const),
+      note: isDone ? '완료했어요' : '해볼까요?',
+    };
   });
+};

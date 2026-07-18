@@ -27,6 +27,16 @@ const EMOTION_EMOJI: Record<string, string> = {
 
 type Mode = 'idle' | 'listening' | 'thinking';
 
+// Byte size of a recorded file, or null if it can't be read (then we don't block).
+function safeFileSize(uri: string): number | null {
+  try {
+    const size = new File(uri).size;
+    return typeof size === 'number' ? size : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function TalkView() {
   const characterLabel = useSessionStore((state) => getCharacterLabel(state.character));
   const userId = useSessionStore((state) => state.phone) ?? '';
@@ -123,6 +133,15 @@ export default function TalkView() {
       const sessionId = sessionIdRef.current;
       if (!uri || !sessionId) {
         setBubble('녹음을 확인하지 못했어요. 다시 눌러서 말씀해 주세요.');
+        setMode('idle');
+        return;
+      }
+      // ponytail: a too-short/empty recording is the usual cause of the server's
+      // 422 (no audio field) and undecodable-audio errors — catch it here so we
+      // never upload an empty file and give the user a clear nudge instead.
+      const size = safeFileSize(uri);
+      if (size !== null && size < 2000) {
+        setBubble('조금 더 길게 말씀해 주세요. 버튼을 누른 채로 천천히요!');
         setMode('idle');
         return;
       }

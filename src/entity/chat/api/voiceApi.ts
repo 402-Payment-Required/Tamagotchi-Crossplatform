@@ -26,20 +26,29 @@ export const postVoiceChat = async (
   sessionId: string,
   audioUri: string
 ): Promise<VoiceChatResponse> => {
+  // ponytail: fetch, not axios — RN's fetch builds the multipart body (boundary +
+  // {uri,name,type} file part) natively. axios mangles RN FormData file parts, so
+  // the server saw no fields and returned 422 "missing". Do NOT set Content-Type;
+  // fetch adds it with the boundary itself.
+  const form = new FormData();
+  form.append('user_id', userId);
+  form.append('session_id', sessionId);
+  form.append('audio', {
+    uri: audioUri,
+    name: 'recording.m4a',
+    type: 'audio/m4a',
+  } as unknown as Blob);
+
   try {
-    const form = new FormData();
-    form.append('user_id', userId);
-    form.append('session_id', sessionId);
-    form.append(
-      'audio',
-      // React Native's FormData accepts {uri, name, type} for file parts; DOM's Blob type doesn't cover this.
-      { uri: audioUri, name: 'recording.m4a', type: 'audio/m4a' } as unknown as Blob
-    );
-    // ponytail: no explicit Content-Type here — axios/RN must generate the
-    // multipart boundary itself. A hardcoded 'multipart/form-data' header
-    // strips the boundary and FastAPI can't parse any field (422 "missing").
-    const { data } = await instance.post<VoiceChatResponse>('/voice/chat', form);
-    return data;
+    const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/voice/chat`, {
+      method: 'POST',
+      body: form,
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`voice/chat ${response.status}: ${detail}`);
+    }
+    return (await response.json()) as VoiceChatResponse;
   } catch (error) {
     throw new Error(getErrorMessage(error));
   }
