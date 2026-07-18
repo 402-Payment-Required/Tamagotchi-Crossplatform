@@ -47,6 +47,9 @@ export default function TalkView() {
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState('');
   const sessionIdRef = useRef<string | null>(null);
+  // synchronous re-entrancy lock: a double-tap must not stop/upload twice
+  // (that corrupts the recording and fires /voice/chat more than once).
+  const busyRef = useRef(false);
 
   const chat = useChat();
   const voiceStart = useVoiceStart();
@@ -124,26 +127,33 @@ export default function TalkView() {
   };
 
   const handleListen = async () => {
-    if (mode === 'thinking') return;
+    // hard synchronous lock — blocks a second tap that hasn't re-rendered yet.
+    if (busyRef.current || mode === 'thinking') return;
+    busyRef.current = true;
 
+    // STOP + SEND (exactly once per recording)
     if (mode === 'listening') {
       setMode('thinking');
-      await recorder.stop();
-      const uri = recorder.uri;
+      let uri: string | null = null;
+      try {
+        await recorder.stop();
+        uri = recorder.uri;
+      } catch {
+        // fall through to the missing-uri branch below
+      }
       const sessionId = sessionIdRef.current;
       if (!uri || !sessionId) {
         setBubble('녹음을 확인하지 못했어요. 다시 눌러서 말씀해 주세요.');
         setMode('idle');
+        busyRef.current = false;
         return;
       }
-      // ponytail: a too-short/empty recording is the usual cause of the server's
-      // 422 (no audio field) and undecodable-audio errors — catch it here so we
-      // never upload an empty file and give the user a clear nudge instead.
       const size = safeFileSize(uri);
       const dbg = `[debug] uri=${uri}\nsize=${size}`;
       if (size !== null && size < 2000) {
         setBubble(`조금 더 길게 말씀해 주세요.\n${dbg}`);
         setMode('idle');
+        busyRef.current = false;
         return;
       }
       voiceChat.mutate(
@@ -158,23 +168,34 @@ export default function TalkView() {
             setBubble(`${dbg}\n${String((err as Error)?.message ?? err)}`);
             setMode('idle');
           },
+          onSettled: () => {
+            busyRef.current = false;
+          },
         }
       );
       return;
     }
 
-    const { granted } = await requestRecordingPermissionsAsync();
-    if (!granted) {
-      setBubble('마이크 권한을 허용해 주셔야 이야기할 수 있어요.');
-      return;
+    // START
+    try {
+      const { granted } = await requestRecordingPermissionsAsync();
+      if (!granted) {
+        setBubble('마이크 권한을 허용해 주셔야 이야기할 수 있어요.');
+        return;
+      }
+      if (!sessionIdRef.current) {
+        sessionIdRef.current = await voiceStart.mutateAsync(userId);
+      }
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setMode('listening');
+    } catch {
+      setBubble('녹음을 시작하지 못했어요. 다시 시도해 주세요.');
+      setMode('idle');
+    } finally {
+      busyRef.current = false;
     }
-    if (!sessionIdRef.current) {
-      sessionIdRef.current = await voiceStart.mutateAsync(userId);
-    }
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
-    setMode('listening');
   };
 
   const handleSend = () => {
