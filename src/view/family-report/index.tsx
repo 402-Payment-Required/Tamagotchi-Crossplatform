@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { ReportSignal } from '~/entity/report';
 import { useReport } from '~/entity/report';
-import { useSessionStore } from '~/shared/store/useSessionStore';
+import { useApiUserId } from '~/shared/store/useSessionStore';
 
 const TYPE_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   meal: 'restaurant',
@@ -41,7 +41,7 @@ function formatTime(ts: string): string {
 }
 
 export default function FamilyReportView() {
-  const userId = useSessionStore((state) => state.phone);
+  const userId = useApiUserId();
   const { data, isLoading, isError, refetch, isRefetching } = useReport(userId);
 
   const signals = [...(data?.signals ?? [])].sort(

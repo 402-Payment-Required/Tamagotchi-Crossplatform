@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getCharacterLabel } from '~/entity/character';
 import { useChat, useVoiceChat, useVoiceEnd, useVoiceStart } from '~/entity/chat';
-import { useSessionStore } from '~/shared/store/useSessionStore';
+import { useApiUserId, useSessionStore } from '~/shared/store/useSessionStore';
 import { Avatar } from '~/shared/ui/Avatar';
 
 const EMOTION_EMOJI: Record<string, string> = {
@@ -39,7 +39,7 @@ function safeFileSize(uri: string): number | null {
 
 export default function TalkView() {
   const characterLabel = useSessionStore((state) => getCharacterLabel(state.character));
-  const userId = useSessionStore((state) => state.phone) ?? '';
+  const userId = useApiUserId();
 
   const [bubble, setBubble] = useState('편하게 말씀해 보세요');
   const [emotion, setEmotion] = useState<string | null>(null);
@@ -149,9 +149,8 @@ export default function TalkView() {
         return;
       }
       const size = safeFileSize(uri);
-      const dbg = `[debug] uri=${uri}\nsize=${size}`;
       if (size !== null && size < 2000) {
-        setBubble(`조금 더 길게 말씀해 주세요.\n${dbg}`);
+        setBubble('조금 더 길게 말씀해 주세요. 버튼을 누른 채로 천천히요!');
         setMode('idle');
         busyRef.current = false;
         return;
@@ -163,9 +162,8 @@ export default function TalkView() {
             playReplyAudio(result.audio);
             applyReply(result.reply, result.emotion);
           },
-          onError: (err) => {
-            // debug: surface the recording path/size + real server error
-            setBubble(`${dbg}\n${String((err as Error)?.message ?? err)}`);
+          onError: () => {
+            setBubble('지금은 답하기 어려워요. 잠시 후 다시 말씀해 주세요.');
             setMode('idle');
           },
           onSettled: () => {
@@ -225,11 +223,7 @@ export default function TalkView() {
         </View>
         <View className="max-w-[320px] items-center rounded-[32px] bg-white px-8 py-7 shadow-md">
           {emotion && <Text className="mb-2 text-3xl">{EMOTION_EMOJI[emotion] ?? '🙂'}</Text>}
-          <Text
-            selectable
-            className={`text-center font-extrabold leading-snug text-ink ${
-              bubble.includes('[debug]') ? 'text-xs' : 'text-2xl'
-            }`}>
+          <Text className="text-center text-2xl font-extrabold leading-snug text-ink">
             {mode === 'thinking' ? '생각하고 있어요...' : bubble}
           </Text>
         </View>
