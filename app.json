@@ -34,7 +34,13 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "손주와 이야기하려면 마이크 접근이 필요해요."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

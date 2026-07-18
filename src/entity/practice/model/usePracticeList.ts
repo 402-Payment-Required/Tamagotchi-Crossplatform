@@ -1,12 +1,21 @@
-import { usePracticeStore } from '~/shared/store/usePracticeStore';
+import { useQuery } from '@tanstack/react-query';
 
-import { PRACTICE_ITEMS, STATUS_NOTE } from './practiceItems';
+import { getMissionList } from '../api/missionApi';
+import { STATUS_NOTE, TYPE_ICON } from './practiceItems';
 
-export const usePracticeList = () => {
-  const status = usePracticeStore((state) => state.status);
-  return PRACTICE_ITEMS.map((item) => ({
-    ...item,
-    status: status[item.id],
-    note: STATUS_NOTE[status[item.id]],
-  }));
-};
+export const usePracticeList = (userId: string | null) =>
+  useQuery({
+    queryKey: ['missions', userId],
+    queryFn: async () => {
+      const missions = await getMissionList(userId as string);
+      return missions.map((mission) => ({
+        id: mission.mission_id,
+        title: mission.title,
+        type: mission.type,
+        status: mission.status,
+        icon: TYPE_ICON[mission.type],
+        note: STATUS_NOTE[mission.status],
+      }));
+    },
+    enabled: !!userId,
+  });

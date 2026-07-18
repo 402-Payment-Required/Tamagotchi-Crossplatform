@@ -1,95 +1,144 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// ponytail: mock weekly report — swap the constants below for a real query
-// (e.g. useWeeklyReport(childId)) once the reporting API exists.
-const STATS = [
-  { label: '대화 횟수', value: '12' },
-  { label: '식사 언급', value: '9' },
-  { label: '첫 성공', value: '키오스크 🎉' },
-];
+import type { ReportSignal } from '~/entity/report';
+import { useReport } from '~/entity/report';
+import { useSessionStore } from '~/shared/store/useSessionStore';
 
-const ACTIVITY = [
-  {
-    icon: 'chatbubbles' as const,
-    tint: '#E3F7E8',
-    color: '#3DBE5C',
-    title: '손주와 대화 — 김치찌개 이야기',
-    time: '오늘 오전 10:24',
-  },
-  {
-    icon: 'cafe' as const,
-    tint: '#FFF1DE',
-    color: '#F58A00',
-    title: '키오스크 연습 완료',
-    time: '어제 오후 3:10',
-  },
-  {
-    icon: 'checkbox' as const,
-    tint: '#E3F7E8',
-    color: '#3DBE5C',
-    title: '문자 보내기 연습 시작',
-    time: '7월 16일',
-  },
-];
+const TYPE_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  meal: 'restaurant',
+  mood: 'happy',
+};
+
+const MOOD_KO: Record<string, string> = {
+  good: '좋음',
+  bad: '안 좋음',
+  tired: '피곤함',
+  anxious: '불안함',
+  happy: '행복함',
+};
+
+function describeSignal(signal: ReportSignal): string {
+  if (signal.type === 'meal') {
+    return signal.value === 'True' ? '식사를 하셨어요' : '아직 식사 전이에요';
+  }
+  if (signal.type === 'mood') {
+    return `기분이 ${MOOD_KO[signal.value] ?? signal.value}`;
+  }
+  return `${signal.type}: ${signal.value}`;
+}
+
+function formatTime(ts: string): string {
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return ts;
+  return date.toLocaleString('ko-KR', {
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
 
 export default function FamilyReportView() {
+  const userId = useSessionStore((state) => state.phone);
+  const { data, isLoading, isError } = useReport(userId);
+
+  const signals = [...(data?.signals ?? [])].sort(
+    (a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()
+  );
+  const mealCount = signals.filter((signal) => signal.type === 'meal').length;
+  const latestMood = signals.find((signal) => signal.type === 'mood');
+
   return (
     <SafeAreaView className="flex-1 bg-cream">
       <ScrollView contentContainerClassName="gap-6 px-7 pb-10 pt-6">
         <View>
-          <Text className="text-2xl font-extrabold text-ink">어머니 주간 리포트</Text>
-          <Text className="mt-1 text-base font-semibold text-ink-soft">7월 12일 – 7월 18일</Text>
-        </View>
-
-        <View className="rounded-[20px] bg-peach-tint p-5">
-          <View className="flex-row items-center gap-2">
-            <Ionicons name="sunny" size={22} color="#E67E00" />
-            <Text className="text-sm font-extrabold tracking-wide text-peach-deep">
-              이번 주 하이라이트
-            </Text>
-          </View>
-          <Text className="mt-3 text-lg font-bold leading-snug text-peach-text">
-            어머니가 카페 키오스크 주문을 처음으로 혼자 성공하셨어요! 🎉
+          <Text className="text-2xl font-extrabold text-ink">가족 리포트</Text>
+          <Text className="mt-1 text-base font-semibold text-ink-soft">
+            손주와의 대화와 연습 기록이에요
           </Text>
         </View>
 
-        <View className="flex-row gap-3">
-          {STATS.map((stat) => (
-            <View key={stat.label} className="flex-1 rounded-2xl bg-white p-4 shadow-sm">
-              <Text className="text-2xl font-extrabold text-brand" numberOfLines={1}>
-                {stat.value}
-              </Text>
-              <Text className="mt-1 text-xs font-semibold text-locked-text">{stat.label}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View>
-          <Text className="mb-3 text-lg font-extrabold text-ink">최근 활동</Text>
-          <View className="gap-3">
-            {ACTIVITY.map((item) => (
-              <View key={item.title} className="flex-row items-center gap-3">
-                <View
-                  className="h-11 w-11 items-center justify-center rounded-xl"
-                  style={{ backgroundColor: item.tint }}>
-                  <Ionicons name={item.icon} size={20} color={item.color} />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-bold text-ink">{item.title}</Text>
-                  <Text className="text-xs font-semibold text-[#9A9186]">{item.time}</Text>
-                </View>
-              </View>
-            ))}
+        {isLoading && (
+          <View className="items-center py-12">
+            <ActivityIndicator color="#3DBE5C" size="large" />
           </View>
-        </View>
+        )}
+
+        {isError && (
+          <View className="rounded-2xl bg-white p-6 shadow-sm">
+            <Text className="text-base font-bold text-locked-text">
+              리포트를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+            </Text>
+          </View>
+        )}
+
+        {data && (
+          <>
+            <View className="flex-row gap-3">
+              <View className="flex-1 rounded-2xl bg-white p-4 shadow-sm">
+                <Text className="text-2xl font-extrabold text-brand" numberOfLines={1}>
+                  {signals.length}
+                </Text>
+                <Text className="mt-1 text-xs font-semibold text-locked-text">전체 기록</Text>
+              </View>
+              <View className="flex-1 rounded-2xl bg-white p-4 shadow-sm">
+                <Text className="text-2xl font-extrabold text-brand" numberOfLines={1}>
+                  {mealCount}
+                </Text>
+                <Text className="mt-1 text-xs font-semibold text-locked-text">식사 언급</Text>
+              </View>
+              <View className="flex-1 rounded-2xl bg-white p-4 shadow-sm">
+                <Text className="text-2xl font-extrabold text-brand" numberOfLines={1}>
+                  {latestMood ? (MOOD_KO[latestMood.value] ?? latestMood.value) : '—'}
+                </Text>
+                <Text className="mt-1 text-xs font-semibold text-locked-text">최근 기분</Text>
+              </View>
+            </View>
+
+            <View>
+              <Text className="mb-3 text-lg font-extrabold text-ink">최근 활동</Text>
+              {signals.length === 0 ? (
+                <View className="rounded-2xl bg-white p-6 shadow-sm">
+                  <Text className="text-base font-semibold text-ink-soft">
+                    아직 기록된 활동이 없어요.
+                  </Text>
+                </View>
+              ) : (
+                <View className="gap-3">
+                  {signals.map((signal, index) => (
+                    <View
+                      key={`${signal.type}-${signal.ts}-${index}`}
+                      className="flex-row items-center gap-3">
+                      <View className="h-11 w-11 items-center justify-center rounded-xl bg-[#E3F7E8]">
+                        <Ionicons
+                          name={TYPE_ICON[signal.type] ?? 'information-circle'}
+                          size={20}
+                          color="#3DBE5C"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-base font-bold text-ink">
+                          {describeSignal(signal)}
+                        </Text>
+                        <Text className="text-xs font-semibold text-[#9A9186]">
+                          {formatTime(signal.ts)}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </>
+        )}
 
         <Pressable
           onPress={() => Alert.alert('전화 연결', '전화 기능은 준비 중이에요.')}
           className="mt-2 h-20 flex-row items-center justify-center gap-3 rounded-2xl bg-brand active:bg-brand-dark">
           <Ionicons name="call" size={24} color="#fff" />
-          <Text className="text-xl font-extrabold text-white">어머니께 전화하기</Text>
+          <Text className="text-xl font-extrabold text-white">전화하기</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

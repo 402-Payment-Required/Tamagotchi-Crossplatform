@@ -1,32 +1,60 @@
 import { Ionicons } from '@expo/vector-icons';
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  useAudioPlayer,
+  useAudioRecorder,
+} from 'expo-audio';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getCharacterLabel } from '~/entity/character';
+import { useChat, useVoiceChat, useVoiceEnd, useVoiceStart } from '~/entity/chat';
 import { useSessionStore } from '~/shared/store/useSessionStore';
 import { Avatar } from '~/shared/ui/Avatar';
 
-// ponytail: canned replies stand in for real speech-to-text + LLM conversation;
-// swap handleListen/handleSend's setTimeout for the real API call when it's ready.
-const CANNED_REPLIES = [
-  '우와 김치찌개! 맛있었겠다 할머니~',
-  '오늘 하루도 고생하셨어요, 할머니!',
-  '저도 할머니 보고 싶어요 :)',
-  '밥은 꼭 챙겨 드세요!',
-];
+const EMOTION_EMOJI: Record<string, string> = {
+  happy: '😊',
+  worried: '😟',
+  excited: '🤩',
+  sad: '😢',
+  neutral: '🙂',
+};
+
+type Mode = 'idle' | 'listening' | 'thinking';
 
 export default function TalkView() {
   const characterLabel = useSessionStore((state) => getCharacterLabel(state.character));
-  const [bubble, setBubble] = useState(CANNED_REPLIES[0]);
-  const [listening, setListening] = useState(false);
+  const userId = useSessionStore((state) => state.phone) ?? '';
+
+  const [bubble, setBubble] = useState('편하게 말씀해 보세요');
+  const [emotion, setEmotion] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>('idle');
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState('');
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const sessionIdRef = useRef<string | null>(null);
+
+  const chat = useChat();
+  const voiceStart = useVoiceStart();
+  const voiceChat = useVoiceChat();
+  const voiceEnd = useVoiceEnd();
+
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const player = useAudioPlayer(null);
+
   const pulse = useRef(new Animated.Value(0)).current;
   const float = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => () => clearTimeout(timeoutRef.current), []);
+  useEffect(
+    () => () => {
+      if (recorder.isRecording) recorder.stop();
+      if (sessionIdRef.current) voiceEnd.mutate({ userId, sessionId: sessionIdRef.current });
+    },
+    // ponytail: end-of-session cleanup only, not meant to re-run on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -40,7 +68,7 @@ export default function TalkView() {
   }, [float]);
 
   useEffect(() => {
-    if (!listening) {
+    if (mode !== 'listening') {
       pulse.stopAnimation();
       pulse.setValue(0);
       return;
@@ -53,26 +81,73 @@ export default function TalkView() {
     );
     animation.start();
     return () => animation.stop();
-  }, [listening, pulse]);
+  }, [mode, pulse]);
 
-  const reply = () => {
-    timeoutRef.current = setTimeout(() => {
-      setBubble(CANNED_REPLIES[Math.floor(Math.random() * CANNED_REPLIES.length)]);
-      setListening(false);
-    }, 900);
+  const applyReply = (reply: string, replyEmotion: string) => {
+    setBubble(reply);
+    setEmotion(replyEmotion);
+    setMode('idle');
   };
 
-  const handleListen = () => {
-    if (listening) return;
-    setListening(true);
-    reply();
+  const handleListen = async () => {
+    if (mode === 'thinking') return;
+
+    if (mode === 'listening') {
+      setMode('thinking');
+      await recorder.stop();
+      const uri = recorder.uri;
+      const sessionId = sessionIdRef.current;
+      if (!uri || !sessionId) {
+        setBubble('녹음을 확인하지 못했어요. 다시 눌러서 말씀해 주세요.');
+        setMode('idle');
+        return;
+      }
+      voiceChat.mutate(
+        { userId, sessionId, audioUri: uri },
+        {
+          onSuccess: (result) => {
+            player.replace(`data:audio/mpeg;base64,${result.audio}`);
+            player.play();
+            applyReply(result.reply, result.emotion);
+          },
+          onError: () => {
+            setBubble('지금은 답하기 어려워요. 잠시 후 다시 말씀해 주세요.');
+            setMode('idle');
+          },
+        }
+      );
+      return;
+    }
+
+    const { granted } = await requestRecordingPermissionsAsync();
+    if (!granted) {
+      setBubble('마이크 권한을 허용해 주셔야 이야기할 수 있어요.');
+      return;
+    }
+    if (!sessionIdRef.current) {
+      sessionIdRef.current = await voiceStart.mutateAsync(userId);
+    }
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+    setMode('listening');
   };
 
   const handleSend = () => {
-    if (!draft.trim()) return;
+    const message = draft.trim();
+    if (!message || mode === 'thinking') return;
     setWriting(false);
     setDraft('');
-    reply();
+    setMode('thinking');
+    chat.mutate(
+      { userId, message },
+      {
+        onSuccess: (result) => applyReply(result.reply, result.emotion),
+        onError: () => {
+          setBubble('지금은 답하기 어려워요. 잠시 후 다시 말씀해 주세요.');
+          setMode('idle');
+        },
+      }
+    );
   };
 
   return (
@@ -83,8 +158,9 @@ export default function TalkView() {
           <Text className="mt-1 text-2xl font-extrabold text-ink">편하게 말씀해 보세요</Text>
         </View>
         <View className="max-w-[320px] items-center rounded-[32px] bg-white px-8 py-7 shadow-md">
+          {emotion && <Text className="mb-2 text-3xl">{EMOTION_EMOJI[emotion] ?? '🙂'}</Text>}
           <Text className="text-center text-2xl font-extrabold leading-snug text-ink">
-            {bubble}
+            {mode === 'thinking' ? '생각하고 있어요...' : bubble}
           </Text>
         </View>
         <Animated.View
@@ -109,6 +185,7 @@ export default function TalkView() {
                 className="h-16 flex-1 rounded-2xl border-2 border-line bg-white px-5 text-lg font-semibold text-ink"
               />
               <Pressable
+                disabled={mode === 'thinking'}
                 onPress={handleSend}
                 className="h-16 w-16 items-center justify-center rounded-2xl bg-brand active:bg-brand-dark">
                 <Ionicons name="arrow-up" size={26} color="#fff" />
@@ -125,15 +202,21 @@ export default function TalkView() {
                 }}>
                 <Pressable
                   accessibilityLabel="말하기"
+                  disabled={mode === 'thinking'}
                   onPress={handleListen}
                   className="h-24 w-24 items-center justify-center rounded-full bg-brand shadow-md active:bg-brand-dark">
-                  <Ionicons name="mic" size={44} color="#fff" />
+                  <Ionicons name={mode === 'listening' ? 'stop' : 'mic'} size={44} color="#fff" />
                 </Pressable>
               </Animated.View>
               <Text className="text-xl font-extrabold text-ink">
-                {listening ? '듣고 있어요...' : '눌러서 말하기'}
+                {mode === 'listening'
+                  ? '듣고 있어요, 다시 누르면 끝나요'
+                  : mode === 'thinking'
+                    ? '답을 기다리고 있어요...'
+                    : '눌러서 말하기'}
               </Text>
               <Pressable
+                disabled={mode !== 'idle'}
                 onPress={() => setWriting(true)}
                 className="flex-row items-center gap-2 p-3 active:opacity-60">
                 <Ionicons name="keypad" size={22} color="#8A7F6E" />
