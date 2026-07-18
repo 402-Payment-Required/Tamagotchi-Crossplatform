@@ -42,7 +42,7 @@ function formatTime(ts: string): string {
 
 export default function FamilyReportView() {
   const userId = useSessionStore((state) => state.phone);
-  const { data, isLoading, isError } = useReport(userId);
+  const { data, isLoading, isError, refetch, isRefetching } = useReport(userId);
 
   const signals = [...(data?.signals ?? [])].sort(
     (a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()
@@ -67,10 +67,18 @@ export default function FamilyReportView() {
         )}
 
         {isError && (
-          <View className="rounded-2xl bg-white p-6 shadow-sm">
+          <View className="gap-4 rounded-2xl bg-white p-6 shadow-sm">
             <Text className="text-base font-bold text-locked-text">
-              리포트를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+              리포트를 불러오지 못했어요.
             </Text>
+            <Pressable
+              disabled={isRefetching}
+              onPress={() => refetch()}
+              className="h-14 items-center justify-center rounded-2xl bg-brand active:bg-brand-dark">
+              <Text className="text-lg font-extrabold text-white">
+                {isRefetching ? '다시 불러오는 중...' : '다시 시도하기'}
+              </Text>
+            </Pressable>
           </View>
         )}
 

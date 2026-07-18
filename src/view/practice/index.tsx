@@ -8,7 +8,7 @@ import { useSessionStore } from '~/shared/store/useSessionStore';
 export default function PracticeView() {
   const router = useRouter();
   const userId = useSessionStore((state) => state.phone);
-  const { data: items, isLoading, isError } = usePracticeList(userId);
+  const { data: items, isLoading, isError, refetch, isRefetching } = usePracticeList(userId);
   const completed = items?.filter((item) => item.status === 'done').length ?? 0;
 
   const handlePress = (missionId: string, title: string) =>
@@ -33,10 +33,18 @@ export default function PracticeView() {
       )}
 
       {isError && (
-        <View className="mx-7 mt-8 rounded-2xl bg-white p-6 shadow-sm">
+        <View className="mx-7 mt-8 gap-4 rounded-2xl bg-white p-6 shadow-sm">
           <Text className="text-base font-bold text-locked-text">
-            연습 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+            연습 목록을 불러오지 못했어요.
           </Text>
+          <Pressable
+            disabled={isRefetching}
+            onPress={() => refetch()}
+            className="h-14 items-center justify-center rounded-2xl bg-brand active:bg-brand-dark">
+            <Text className="text-lg font-extrabold text-white">
+              {isRefetching ? '다시 불러오는 중...' : '다시 시도하기'}
+            </Text>
+          </Pressable>
         </View>
       )}
 
