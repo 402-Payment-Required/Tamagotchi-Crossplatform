@@ -1,4 +1,4 @@
-import { File } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import { instance } from '~/shared/lib/axios';
 import { getErrorMessage } from '~/shared/lib/errorHandler';
@@ -28,17 +28,26 @@ export const postVoiceChat = async (
   sessionId: string,
   audioUri: string
 ): Promise<VoiceChatResponse> => {
-  // ponytail: send the recording as base64 in a JSON body, not a multipart file.
-  // RN can't reliably attach a {uri,name,type} file part (server saw no audio →
-  // 422), but JSON POST is rock-solid here (same path as /chat and /voice/start).
+  // ponytail: use expo-file-system's native uploadAsync(MULTIPART), NOT JS
+  // FormData/fetch. RN's JS FormData drops the file part (server saw no audio →
+  // 422); the native uploader builds the multipart body with the file correctly.
+  // Server field names: file part = "audio", extra fields = user_id/session_id.
   try {
-    const audioBase64 = await new File(audioUri).base64();
-    const { data } = await instance.post<VoiceChatResponse>('/voice/chat', {
-      user_id: userId,
-      session_id: sessionId,
-      audio_base64: audioBase64,
-    });
-    return data;
+    const result = await FileSystem.uploadAsync(
+      `${process.env.EXPO_PUBLIC_API_URL}/voice/chat`,
+      audioUri,
+      {
+        httpMethod: 'POST',
+        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+        fieldName: 'audio',
+        mimeType: 'audio/m4a',
+        parameters: { user_id: userId, session_id: sessionId },
+      }
+    );
+    if (result.status < 200 || result.status >= 300) {
+      throw new Error(`voice/chat ${result.status}: ${result.body}`);
+    }
+    return JSON.parse(result.body) as VoiceChatResponse;
   } catch (error) {
     throw new Error(getErrorMessage(error));
   }
