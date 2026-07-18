@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   RecordingPresets,
   requestRecordingPermissionsAsync,
+  setAudioModeAsync,
   useAudioPlayer,
   useAudioRecorder,
 } from 'expo-audio';
@@ -127,6 +128,7 @@ export default function TalkView() {
     if (!sessionIdRef.current) {
       sessionIdRef.current = await voiceStart.mutateAsync(userId);
     }
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
     await recorder.prepareToRecordAsync();
     recorder.record();
     setMode('listening');
