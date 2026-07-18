@@ -1,3 +1,5 @@
+import { File } from 'expo-file-system';
+
 import { instance } from '~/shared/lib/axios';
 import { getErrorMessage } from '~/shared/lib/errorHandler';
 
@@ -26,29 +28,17 @@ export const postVoiceChat = async (
   sessionId: string,
   audioUri: string
 ): Promise<VoiceChatResponse> => {
-  // ponytail: fetch, not axios — RN's fetch builds the multipart body (boundary +
-  // {uri,name,type} file part) natively. axios mangles RN FormData file parts, so
-  // the server saw no fields and returned 422 "missing". Do NOT set Content-Type;
-  // fetch adds it with the boundary itself.
-  const form = new FormData();
-  form.append('user_id', userId);
-  form.append('session_id', sessionId);
-  form.append('audio', {
-    uri: audioUri,
-    name: 'recording.m4a',
-    type: 'audio/m4a',
-  } as unknown as Blob);
-
+  // ponytail: send the recording as base64 in a JSON body, not a multipart file.
+  // RN can't reliably attach a {uri,name,type} file part (server saw no audio →
+  // 422), but JSON POST is rock-solid here (same path as /chat and /voice/start).
   try {
-    const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/voice/chat`, {
-      method: 'POST',
-      body: form,
+    const audioBase64 = await new File(audioUri).base64();
+    const { data } = await instance.post<VoiceChatResponse>('/voice/chat', {
+      user_id: userId,
+      session_id: sessionId,
+      audio_base64: audioBase64,
     });
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`voice/chat ${response.status}: ${detail}`);
-    }
-    return (await response.json()) as VoiceChatResponse;
+    return data;
   } catch (error) {
     throw new Error(getErrorMessage(error));
   }

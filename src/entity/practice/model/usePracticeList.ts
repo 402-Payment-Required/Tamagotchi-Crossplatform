@@ -11,7 +11,7 @@ export const usePracticeList = () => {
       title: mission.title,
       icon: mission.icon,
       status: isDone ? ('done' as const) : ('todo' as const),
-      note: isDone ? '완료했어요' : '해볼까요?',
+      note: isDone ? '완료했어요' : mission.subtitle,
     };
   });
 };

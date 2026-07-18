@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PracticeRow, usePracticeList } from '~/entity/practice';
@@ -14,30 +14,34 @@ export default function PracticeView() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream">
-      <View className="px-7 pt-8">
-        <Text className="text-lg font-bold text-ink-soft">오늘의 연습</Text>
-        <Text className="mt-1 text-3xl font-extrabold text-ink">하나씩 천천히 해봐요</Text>
-        <View className="mt-5 rounded-2xl bg-brand-light px-5 py-4">
-          <Text className="text-base font-bold text-brand-dark">완료한 연습 {completed}개</Text>
+      <ScrollView contentContainerClassName="pb-10">
+        <View className="px-7 pt-8">
+          <Text className="text-lg font-bold text-ink-soft">오늘의 연습</Text>
+          <Text className="mt-1 text-3xl font-extrabold text-ink">하나씩 천천히 해봐요</Text>
+          <View className="mt-5 rounded-2xl bg-brand-light px-5 py-4">
+            <Text className="text-base font-bold text-brand-dark">
+              완료한 연습 {completed}개 · 전체 {items.length}개
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <View className="gap-6 px-7 pt-8">
-        {items.map((item) => (
-          <Pressable
-            key={item.id}
-            onPress={() => handlePress(item.id, item.title)}
-            accessibilityRole="button"
-            accessibilityLabel={`${item.title}, ${item.note}`}>
-            <PracticeRow
-              title={item.title}
-              note={item.note}
-              icon={item.icon}
-              status={item.status}
-            />
-          </Pressable>
-        ))}
-      </View>
+        <View className="gap-5 px-7 pt-7">
+          {items.map((item) => (
+            <Pressable
+              key={item.id}
+              onPress={() => handlePress(item.id, item.title)}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title}, ${item.note}`}>
+              <PracticeRow
+                title={item.title}
+                note={item.note}
+                icon={item.icon}
+                status={item.status}
+              />
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
