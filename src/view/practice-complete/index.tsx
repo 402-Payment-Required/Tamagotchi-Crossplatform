@@ -27,7 +27,8 @@ export default function PracticeCompleteView() {
           <Text className="absolute -right-1 top-5 text-2xl">🎊</Text>
         </View>
         <Text className="mt-8 text-center text-3xl font-extrabold leading-snug text-ink">
-          {title} 완료!{'\n'}이제 혼자서도{'\n'}할 수 있어요 🎉
+          성공하셨어요! 🎉{'\n'}
+          {title}을 혼자 해냈어요.{'\n'}축하드려요!
         </Text>
 
         <View className="mt-10 w-full rounded-[22px] bg-white p-6 shadow-md">
