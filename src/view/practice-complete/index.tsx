@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getCharacterLabel } from '~/entity/character';
+import { PRACTICE_ITEMS } from '~/entity/practice';
+import type { PracticeId } from '~/shared/store/usePracticeStore';
 import { useSessionStore } from '~/shared/store/useSessionStore';
 import { Avatar } from '~/shared/ui/Avatar';
 import { PrimaryButton } from '~/shared/ui/PrimaryButton';
@@ -12,7 +14,9 @@ const DONE_SKILLS = ['메뉴 고르기', '화면 눌러 주문하기', '주문 �
 
 export default function PracticeCompleteView() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id?: PracticeId }>();
   const characterLabel = useSessionStore((state) => getCharacterLabel(state.character));
+  const title = PRACTICE_ITEMS.find((item) => item.id === id)?.title ?? '오늘의 연습';
 
   return (
     <SafeAreaView className="flex-1 bg-cream">
@@ -23,7 +27,7 @@ export default function PracticeCompleteView() {
           <Text className="absolute -right-1 top-5 text-2xl">🎊</Text>
         </View>
         <Text className="mt-8 text-center text-3xl font-extrabold leading-snug text-ink">
-          주문 완료!{'\n'}할머니 이제 혼자도{'\n'}할 수 있어요 🎉
+          {title} 완료!{'\n'}이제 혼자서도{'\n'}할 수 있어요 🎉
         </Text>
 
         <View className="mt-10 w-full rounded-[22px] bg-white p-6 shadow-md">

@@ -13,8 +13,13 @@ export default function LoginView() {
   const character = useSessionStore((state) => state.character);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showError, setShowError] = useState(false);
 
   const goNext = () => {
+    if (!phone.trim() || !password.trim()) {
+      setShowError(true);
+      return;
+    }
     login(phone);
     router.replace(character ? '/(tabs)' : '/character-select');
   };
@@ -34,7 +39,10 @@ export default function LoginView() {
               <Text className="text-lg font-bold text-peach-text">전화번호</Text>
               <TextInput
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(value) => {
+                  setPhone(value);
+                  setShowError(false);
+                }}
                 placeholder="010-0000-0000"
                 keyboardType="phone-pad"
                 className="h-16 rounded-2xl border-2 border-line bg-white px-5 text-xl font-semibold text-ink"
@@ -44,17 +52,32 @@ export default function LoginView() {
               <Text className="text-lg font-bold text-peach-text">비밀번호</Text>
               <TextInput
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  setShowError(false);
+                }}
                 placeholder="••••••"
                 secureTextEntry
                 className="h-16 rounded-2xl border-2 border-line bg-white px-5 text-xl font-semibold text-ink"
               />
             </View>
           </View>
+          {showError && (
+            <Text
+              accessibilityLiveRegion="polite"
+              className="mt-3 text-center font-bold text-[#C85C3F]">
+              전화번호와 비밀번호를 입력해 주세요.
+            </Text>
+          )}
         </View>
 
         <View>
-          <PrimaryButton label="로그인" onPress={goNext} className="h-[84px]" />
+          <PrimaryButton
+            label="로그인"
+            onPress={goNext}
+            disabled={!phone.trim() || !password.trim()}
+            className="h-[84px]"
+          />
           <View className="my-4 flex-row items-center gap-3">
             <View className="h-px flex-1 bg-line" />
             <Text className="text-sm font-semibold text-ink-softer">처음 오셨나요?</Text>
