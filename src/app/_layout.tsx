@@ -33,6 +33,7 @@ export default function RootLayout() {
         <Stack.Screen name="character-select" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="practice-kiosk" />
+        <Stack.Screen name="practice-sms" />
         <Stack.Screen name="practice/[id]" />
         <Stack.Screen name="practice-complete" />
         <Stack.Screen name="family-report" options={{ headerShown: true, title: '가족 리포트' }} />
