@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getMission } from '~/entity/practice';
 import { useMissionProgress } from '~/shared/store/useMissionProgress';
+import KioskCafeView from '~/view/kiosk-cafe';
 
 export default function MissionPlayView() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function MissionPlayView() {
     router.replace('/practice');
     return null;
   }
+  if (mission.id === 'kiosk_cafe') return <KioskCafeView />;
 
   const step = mission.steps[stepIndex];
   const isLastStep = stepIndex === mission.steps.length - 1;
