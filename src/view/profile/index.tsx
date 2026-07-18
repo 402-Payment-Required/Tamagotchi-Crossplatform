@@ -26,7 +26,13 @@ export default function ProfileView() {
         {phone && <Text className="mt-1 text-base font-semibold text-ink-soft">{phone}</Text>}
       </View>
 
-      <View className="mt-10 gap-4 px-7">
+      <View className="mt-9 px-7">
+        <Text className="text-lg font-extrabold text-ink">내 설정</Text>
+        <Text className="mt-1 text-base font-semibold text-ink-soft">
+          필요한 항목을 눌러 바꿀 수 있어요.
+        </Text>
+      </View>
+      <View className="mt-5 gap-4 px-7">
         <Pressable
           onPress={() => router.push('/character-select')}
           className="flex-row items-center justify-between rounded-2xl bg-white p-5 shadow-sm active:opacity-80">

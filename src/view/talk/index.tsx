@@ -78,6 +78,10 @@ export default function TalkView() {
   return (
     <SafeAreaView className="flex-1 bg-cream">
       <View className="flex-1 items-center justify-between px-8 pb-5 pt-7">
+        <View className="w-full">
+          <Text className="text-lg font-bold text-ink-soft">{characterLabel}와 이야기</Text>
+          <Text className="mt-1 text-2xl font-extrabold text-ink">편하게 말씀해 보세요</Text>
+        </View>
         <View className="max-w-[320px] items-center rounded-[32px] bg-white px-8 py-7 shadow-md">
           <Text className="text-center text-2xl font-extrabold leading-snug text-ink">
             {bubble}
