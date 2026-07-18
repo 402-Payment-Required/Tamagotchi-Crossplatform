@@ -6,7 +6,9 @@ module.exports = defineConfig([
   expoConfig,
   security.configs.recommended,
   {
-    ignores: ['dist/*'],
+    // ponytail: "#*" is the dropped-in design-tool export folder — vendor bundle
+    // code, not app source, so it shouldn't be linted.
+    ignores: ['dist/*', '**/\\#*/**'],
   },
   {
     settings: {

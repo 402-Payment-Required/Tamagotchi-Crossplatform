@@ -1,10 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { useEffect } from 'react';
 
-import { AnimatedSplashOverlay } from '@/shared/ui/animated-icon';
-import AppTabs from '@/shared/ui/app-tabs';
+import { useSessionStore } from '~/shared/store/useSessionStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -12,14 +11,25 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5 * 60 * 1000 } },
 });
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
+  const hasHydrated = useSessionStore((state) => state.hasHydrated);
+
+  useEffect(() => {
+    if (hasHydrated) SplashScreen.hideAsync();
+  }, [hasHydrated]);
+
+  if (!hasHydrated) return null;
+
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AnimatedSplashOverlay />
-        <AppTabs />
-      </ThemeProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" />
+        <Stack.Screen name="character-select" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="practice-kiosk" />
+        <Stack.Screen name="practice-complete" />
+        <Stack.Screen name="family-report" options={{ headerShown: true, title: '가족 리포트' }} />
+      </Stack>
     </QueryClientProvider>
   );
 }
