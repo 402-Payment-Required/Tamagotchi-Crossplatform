@@ -4,8 +4,10 @@ import {
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
   useAudioPlayer,
+  useAudioPlayerStatus,
   useAudioRecorder,
 } from 'expo-audio';
+import { File, Paths } from 'expo-file-system';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,9 +45,30 @@ export default function TalkView() {
 
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const player = useAudioPlayer(null);
+  const playerStatus = useAudioPlayerStatus(player);
+  const pendingPlayRef = useRef(false);
 
   const pulse = useRef(new Animated.Value(0)).current;
   const float = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (pendingPlayRef.current && playerStatus.isLoaded) {
+      pendingPlayRef.current = false;
+      player.play();
+    }
+  }, [playerStatus.isLoaded, player]);
+
+  const playReplyAudio = (base64Audio: string) => {
+    try {
+      const file = new File(Paths.cache, `voice-reply-${Date.now()}.mp3`);
+      file.create({ overwrite: true, intermediates: true });
+      file.write(base64Audio, { encoding: 'base64' });
+      pendingPlayRef.current = true;
+      player.replace(file.uri);
+    } catch {
+      // playback is a nice-to-have here; the reply text still shows either way
+    }
+  };
 
   useEffect(
     () => () => {
@@ -107,8 +130,7 @@ export default function TalkView() {
         { userId, sessionId, audioUri: uri },
         {
           onSuccess: (result) => {
-            player.replace(`data:audio/mpeg;base64,${result.audio}`);
-            player.play();
+            playReplyAudio(result.audio);
             applyReply(result.reply, result.emotion);
           },
           onError: () => {
