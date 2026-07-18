@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PracticeRow, usePracticeList } from '~/entity/practice';
@@ -33,14 +33,19 @@ export default function PracticeView() {
 
       <View className="gap-6 px-7 pt-8">
         {items.map((item) => (
-          <PracticeRow
+          <Pressable
             key={item.id}
-            title={item.title}
-            note={item.note}
-            icon={item.icon}
-            status={item.status}
+            disabled={item.status === 'locked'}
             onPress={() => handlePress(item.id)}
-          />
+            accessibilityRole="button"
+            accessibilityLabel={`${item.title}, ${item.note}`}>
+            <PracticeRow
+              title={item.title}
+              note={item.note}
+              icon={item.icon}
+              status={item.status}
+            />
+          </Pressable>
         ))}
       </View>
     </SafeAreaView>
