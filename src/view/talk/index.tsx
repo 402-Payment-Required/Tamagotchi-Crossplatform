@@ -46,6 +46,7 @@ export default function TalkView() {
   const [mode, setMode] = useState<Mode>('idle');
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState('');
+  const [audioStatus, setAudioStatus] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   // synchronous re-entrancy lock: a double-tap must not stop/upload twice
   // (that corrupts the recording and fires /voice/chat more than once).
@@ -68,18 +69,25 @@ export default function TalkView() {
     if (pendingPlayRef.current && playerStatus.isLoaded) {
       pendingPlayRef.current = false;
       player.play();
+      setAudioStatus('음성 답변을 재생하고 있어요.');
     }
   }, [playerStatus.isLoaded, player]);
 
-  const playReplyAudio = (base64Audio: string) => {
+  const playReplyAudio = async (base64Audio: string | undefined) => {
+    if (!base64Audio?.trim()) {
+      setAudioStatus('서버에서 음성 답변을 보내지 않았어요.');
+      return;
+    }
     try {
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       const file = new File(Paths.cache, `voice-reply-${Date.now()}.mp3`);
       file.create({ overwrite: true, intermediates: true });
-      file.write(base64Audio, { encoding: 'base64' });
+      file.write(base64Audio.replace(/^data:audio\/[^;]+;base64,/, ''), { encoding: 'base64' });
       pendingPlayRef.current = true;
       player.replace(file.uri);
-    } catch {
-      // playback is a nice-to-have here; the reply text still shows either way
+    } catch (error) {
+      console.warn('TTS playback setup failed', error);
+      setAudioStatus('음성 답변은 받았지만 재생 준비에 실패했어요.');
     }
   };
 
@@ -159,6 +167,7 @@ export default function TalkView() {
         { userId, sessionId, audioUri: uri },
         {
           onSuccess: (result) => {
+            setAudioStatus(null);
             playReplyAudio(result.audio);
             applyReply(result.reply, result.emotion);
           },
@@ -226,6 +235,13 @@ export default function TalkView() {
           <Text className="text-center text-2xl font-extrabold leading-snug text-ink">
             {mode === 'thinking' ? '생각하고 있어요...' : bubble}
           </Text>
+          {audioStatus && (
+            <Text
+              accessibilityLiveRegion="polite"
+              className="mt-3 text-center text-sm font-bold text-peach-deep">
+              {audioStatus}
+            </Text>
+          )}
         </View>
         <Animated.View
           style={{
