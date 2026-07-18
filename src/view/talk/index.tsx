@@ -140,8 +140,9 @@ export default function TalkView() {
       // 422 (no audio field) and undecodable-audio errors — catch it here so we
       // never upload an empty file and give the user a clear nudge instead.
       const size = safeFileSize(uri);
+      const dbg = `[debug] uri=${uri}\nsize=${size}`;
       if (size !== null && size < 2000) {
-        setBubble('조금 더 길게 말씀해 주세요. 버튼을 누른 채로 천천히요!');
+        setBubble(`조금 더 길게 말씀해 주세요.\n${dbg}`);
         setMode('idle');
         return;
       }
@@ -152,8 +153,9 @@ export default function TalkView() {
             playReplyAudio(result.audio);
             applyReply(result.reply, result.emotion);
           },
-          onError: () => {
-            setBubble('지금은 답하기 어려워요. 잠시 후 다시 말씀해 주세요.');
+          onError: (err) => {
+            // debug: surface the recording path/size + real server error
+            setBubble(`${dbg}\n${String((err as Error)?.message ?? err)}`);
             setMode('idle');
           },
         }
@@ -202,7 +204,11 @@ export default function TalkView() {
         </View>
         <View className="max-w-[320px] items-center rounded-[32px] bg-white px-8 py-7 shadow-md">
           {emotion && <Text className="mb-2 text-3xl">{EMOTION_EMOJI[emotion] ?? '🙂'}</Text>}
-          <Text className="text-center text-2xl font-extrabold leading-snug text-ink">
+          <Text
+            selectable
+            className={`text-center font-extrabold leading-snug text-ink ${
+              bubble.includes('[debug]') ? 'text-xs' : 'text-2xl'
+            }`}>
             {mode === 'thinking' ? '생각하고 있어요...' : bubble}
           </Text>
         </View>
