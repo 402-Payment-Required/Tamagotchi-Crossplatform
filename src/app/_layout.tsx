@@ -23,11 +23,17 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'fade',
+          contentStyle: { backgroundColor: '#FDF8F0' },
+        }}>
         <Stack.Screen name="login" />
         <Stack.Screen name="character-select" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="practice-kiosk" />
+        <Stack.Screen name="practice/[id]" />
         <Stack.Screen name="practice-complete" />
         <Stack.Screen name="family-report" options={{ headerShown: true, title: '가족 리포트' }} />
       </Stack>
