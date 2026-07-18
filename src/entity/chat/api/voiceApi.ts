@@ -35,9 +35,10 @@ export const postVoiceChat = async (
       // React Native's FormData accepts {uri, name, type} for file parts; DOM's Blob type doesn't cover this.
       { uri: audioUri, name: 'recording.m4a', type: 'audio/m4a' } as unknown as Blob
     );
-    const { data } = await instance.post<VoiceChatResponse>('/voice/chat', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // ponytail: no explicit Content-Type here — axios/RN must generate the
+    // multipart boundary itself. A hardcoded 'multipart/form-data' header
+    // strips the boundary and FastAPI can't parse any field (422 "missing").
+    const { data } = await instance.post<VoiceChatResponse>('/voice/chat', form);
     return data;
   } catch (error) {
     throw new Error(getErrorMessage(error));
